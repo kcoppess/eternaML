@@ -1,17 +1,27 @@
+# data processing
 import numpy as np
 
 f = open('structures.txt','r')
+struct = []
+maxLength = 0
+b = f.readline()
+while len(b) > 1:
+    if len(b)-1 > maxLength:
+        maxLength = len(b) - 1
+    struct.append(b)
+    b = f.readline()
+f.close()
 
 pairmaps = []
 pairmaps1D = []
 loops = []
 
-b = f.readline()
-while len(b) > 1:
+size = 640
+for b in struct:
     n = len(b)-1 # ignoring endline character
-    pm = np.zeros((n,n))-np.identity(n)
-    pm1d = -np.ones(n)
-    l = np.zeros(n)
+    pm = np.zeros((size,size))-np.identity(size)
+    pm1d = -np.ones(size)
+    l = np.zeros(size)
     for i in range(n):
         if b[i] == '(':
             count = 1
@@ -46,6 +56,3 @@ while len(b) > 1:
     pairmaps.append(pm)
     pairmaps1D.append(pm1d)
     loops.append(l)
-    b = f.readline()
-f.close()
-
