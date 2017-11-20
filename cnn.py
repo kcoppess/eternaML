@@ -28,10 +28,13 @@ def max_pool(x):
     return tf.nn.max_pool(x, ksize=[1,64,64,1], strides=[1,64,64,1], padding='SAME')
 
 def cnn(x):
+    with tf.name_scope('reshape'):
+        x_image = tf.reshape(x, [-1, 64, 64, 1])
+
     with tf.name_scope('conv1'):
         W_conv1 = weight_variable([5,5,1,2])
         b_conv1 = bias_variable([2])
-        h_conv1 = tf.nn.relu(conv2d(x, W_conv1) + b_conv1)
+        h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
     
     with tf.name_scope('pool1'):
         h_pool1 = max_pool_2x2(h_conv1)
@@ -86,7 +89,7 @@ test_data = tf.data.Dataset.from_tensor_slices((test_features, test_label))
 test_iterator = test_data.make_one_shot_iterator()
 test_features, test_labels = test_iterator.get_next()
 '''
-x = tf.placeholder(tf.float32, shape=[None, 640, 640])
+x = tf.placeholder(tf.float32, shape=[None, 640*640])
 y_ = tf.placeholder(tf.float32, shape=[None, 640])
 
 y_conv, keep_prob = cnn(x)
@@ -104,16 +107,15 @@ with tf.name_scope('accuracy'):
     correct_prediction = tf.cast(correct_prediction, tf.float32)
 accuracy = tf.reduce_mean(correct_prediction)
 
+
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for i in range(5):
-        #batch = train_data.train.next_batch(50)
-        if i%1 == 0:
+    for i in range(5000):
+        if i%100 == 0:
             train_accuracy = accuracy.eval(feed_dict={
                 x:features, y_:labels, keep_prob:1.0})
             print('step %d, training accuracy %g' % (i, train_accuracy))
-        train_step.run(feed_dict={x: train_data[0], y_: train_data[1], keep_prob: 0.5})
-
+        train_step.run(feed_dict={x: features, y_: labels, keep_prob: 0.5})
     print('test accuracy %g' % accuracy.eval(feed_dict={
             x: test_data.test_features, y_: test_data.test_label, keep_prob: 1.0}))
 # game plan: two convolution layers for small number of examples; figure out diagnostics; error analysis

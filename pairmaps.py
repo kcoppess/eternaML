@@ -53,6 +53,8 @@ for b in struct:
                 if count == 0 and pm1d[i] != pm1d[i+1] + 1:
                     l[i] = nBranch
                     break
-    pairmaps.append(pm)
+    pm = np.concatenate(pm)
+    pairmaps.append(pm) # flattens matrix
     pairmaps1D.append(pm1d)
     loops.append(l)
+print pm
