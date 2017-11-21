@@ -5,6 +5,7 @@ import tensorflow as tf
 import pairmaps as pm
 import numpy as np
 import random
+import time
 
 # initializes weights
 def weight_variable(shape):
@@ -32,33 +33,33 @@ def cnn(x):
         x_image = tf.reshape(x, [-1, 64, 64, 1])
 
     with tf.name_scope('conv1'):
-        W_conv1 = weight_variable([5,5,1,2])
-        b_conv1 = bias_variable([2])
+        W_conv1 = weight_variable([5,5,1,4])
+        b_conv1 = bias_variable([4])
         h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
     
     with tf.name_scope('pool1'):
         h_pool1 = max_pool_2x2(h_conv1)
 
     with tf.name_scope('conv2'):
-        W_conv2 = weight_variable([5,5,2,4])
-        b_conv2 = bias_variable([4])
+        W_conv2 = weight_variable([5,5,4,16])
+        b_conv2 = bias_variable([16])
         h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
     
     with tf.name_scope('pool2'):
         h_pool2 = max_pool_2x2(h_conv2)
 
     with tf.name_scope('conv3'):
-        W_conv3 = weight_variable([5,5,4,8])
-        b_conv3 = bias_variable([8])
+        W_conv3 = weight_variable([5,5,16,32])
+        b_conv3 = bias_variable([32])
         h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
     
     with tf.name_scope('pool3'):
         h_pool3 = max_pool_2x2(h_conv3)
     
     with tf.name_scope('fc1'):
-        W_fc1 = weight_variable([80*80*8,1024])
+        W_fc1 = weight_variable([80*80*32,1024])
         b_fc1 = bias_variable([1024])
-        h_pool3_flat = tf.reshape(h_pool3, [-1, 80*80*8])
+        h_pool3_flat = tf.reshape(h_pool3, [-1, 80*80*32])
         h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
 
     with tf.name_scope('dropout'):
@@ -79,7 +80,7 @@ loops = np.array(pm.loops)
 features = pMap[:90]
 labels = loops[:90]
 test_features = pMap[90:]
-test_label = pMap[90:]
+test_label = loops[90:]
 '''
 data = tf.data.Dataset.from_tensor_slices((training_features, training_label))
 iterator = data.make_one_shot_iterator()
@@ -110,13 +111,18 @@ accuracy = tf.reduce_mean(correct_prediction)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for i in range(5000):
-        if i%100 == 0:
+    for i in range(61):
+        start = time.clock()
+        if i%5 == 0:
             train_accuracy = accuracy.eval(feed_dict={
                 x:features, y_:labels, keep_prob:1.0})
             print('step %d, training accuracy %g' % (i, train_accuracy))
-        train_step.run(feed_dict={x: features, y_: labels, keep_prob: 0.5})
+        train_step.run(feed_dict={x: features, y_: labels, keep_prob: 1.0})
+        end = time.clock()
+        print(end-start)
     print('test accuracy %g' % accuracy.eval(feed_dict={
-            x: test_data.test_features, y_: test_data.test_label, keep_prob: 1.0}))
+            x: test_features, y_: test_label, keep_prob: 1.0}))
+    prediction = tf.argmax(loops - y_conv,1)
+    print(prediction.eval(feed_dict={x: pMap, keep_prob: 1.0}))
 # game plan: two convolution layers for small number of examples; figure out diagnostics; error analysis
 # output of network: 640 x 6 matrix

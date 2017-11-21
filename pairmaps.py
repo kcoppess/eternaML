@@ -19,10 +19,12 @@ loops = []
 size = 640
 for b in struct:
     n = len(b)-1 # ignoring endline character
-    pm = np.zeros((size,size))-np.identity(size)
-    pm1d = -np.ones(size)
+    pm = np.zeros((size,size))
+    pm1d = np.zeros(size)
     l = np.zeros(size)
     for i in range(n):
+        pm1d[i] = -1
+        pm[i,i] = -1
         if b[i] == '(':
             count = 1
             for j in range(i+1, n):
@@ -57,4 +59,3 @@ for b in struct:
     pairmaps.append(pm) # flattens matrix
     pairmaps1D.append(pm1d)
     loops.append(l)
-print pm
