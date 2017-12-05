@@ -65,9 +65,9 @@ def fully_connected_layer(x, x_dim, output_dim, layer_name, act=tf.nn.relu):
 
 def cnn(x):
     with tf.name_scope('reshape'):
-        x_image = tf.reshape(x, [-1, 640, 640, 1])
+        x_image = tf.reshape(x, [-1, 640, 640, 2])
     
-    h_conv1 = conv_layer(x_image, 10, 10, 1, 4, 'conv1')
+    h_conv1 = conv_layer(x_image, 10, 10, 2, 4, 'conv1')
     h_pool1 = max_pool_2x2(h_conv1, 'pool1')
     h_conv2 = conv_layer(h_pool1, 5, 5, 4, 16, 'conv2')
     h_pool2 = max_pool_2x2(h_conv2, 'pool2')
@@ -76,23 +76,25 @@ def cnn(x):
     
     h_pool3_flat = tf.reshape(h_pool3, [-1, 80*80*32])
     h_fc1 = fully_connected_layer(h_pool3_flat, 80*80*32, 1024, 'fc1')
-    h_fc2 = fully_connected_layer(h_fc1, 1024, 2048, 'fc2')
+    h_fc2 = h_fc1 #fully_connected_layer(h_fc1, 1024, 2048, 'fc2')
 
     with tf.name_scope('dropout'):
         keep_prob = tf.placeholder(tf.float32)
         h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
     
-    y_conv = fully_connected_layer(h_fc2_drop, 2048, 640, 'final')
+    y_conv = fully_connected_layer(h_fc2_drop, 1024, 6, 'final')
 
     return y_conv, keep_prob
 
 pMap = np.array(pm.pairmaps)
 loops = np.array(pm.loops)
 
-features = pMap[:90*640]
-labels = loops[:90*640]
-test_features = pMap[90*640:]
-test_label = loops[90*640:]
+length = len(loops)
+
+features = pMap[:length-20]
+labels = loops[:length-20]
+test_features = pMap[-20:]
+test_label = loops[-20:]
 '''
 data = tf.data.Dataset.from_tensor_slices((training_features, training_label))
 iterator = data.make_one_shot_iterator()
@@ -113,7 +115,7 @@ cross_entropy = tf.reduce_mean(cross_entropy)
 tf.summary.scalar('cross_entropy', cross_entropy)
 
 with tf.name_scope('adam_optimizer'):
-    train_step = tf.train.AdamOptimizer(1e-2).minimize(cross_entropy)
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 
 with tf.name_scope('accuracy'):
     correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
@@ -123,11 +125,11 @@ tf.summary.scalar('accuracy', accuracy)
 
 with tf.Session() as sess:
     merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter('train', sess.graph)
-    test_writer = tf.summary.FileWriter('test')
+    train_writer = tf.summary.FileWriter('indiv_train', sess.graph)
+    test_writer = tf.summary.FileWriter('indiv_test')
     
     sess.run(tf.global_variables_initializer())
-    for i in range(11):
+    for i in range(61):
         start = time.clock()
         if i%5 == 0:
             train_accuracy = accuracy.eval(feed_dict={
