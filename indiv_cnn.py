@@ -89,10 +89,10 @@ def cnn(x):
 pMap = np.array(pm.pairmaps)
 loops = np.array(pm.loops)
 
-features = pMap[:90]
-labels = loops[:90]
-test_features = pMap[90:]
-test_label = loops[90:]
+features = pMap[:90*640]
+labels = loops[:90*640]
+test_features = pMap[90*640:]
+test_label = loops[90*640:]
 '''
 data = tf.data.Dataset.from_tensor_slices((training_features, training_label))
 iterator = data.make_one_shot_iterator()
