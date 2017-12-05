@@ -59,3 +59,6 @@ for b in struct:
     pairmaps.append(pm) # flattens matrix
     pairmaps1D.append(pm1d)
     loops.append(l)
+#predictions = np.loadtxt('prediction.csv',delimiter=',')
+#for i in range(90):
+#    print np.nonzero(loops[i]), np.nonzero(predictions[i])
