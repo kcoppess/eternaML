@@ -85,11 +85,11 @@ def cnn(x):
 
     return y_conv, keep_prob
 
-length = len(loops)
-traintest_boundary = int(0.7*length)
-
 pMap = np.load('pairmap2D.csv', delimiter=',')
 loops = np.load('loops.csv', delimiter=',')
+
+length = len(loops)
+traintest_boundary = int(0.7*length)
 
 features = pMap[:traintest_boundary]
 labels = loops[:traintest_boundary]
