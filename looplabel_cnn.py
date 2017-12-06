@@ -2,7 +2,6 @@ from __future__ import print_function
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 import tensorflow as tf
-import pairmaps as pm
 import numpy as np
 import random
 import time
@@ -47,7 +46,7 @@ def conv_layer(x, kernal_dim1, kernal_dim2, num_input_channels, num_features, la
         tf.summary.histogram('activations', activations)
         return activations
 
-def fully_connected_layer(x, x_dim, output_dim, layer_name, act=tf.nn.relu):
+def fully_connected_layer(x, x_dim, output_dim, layer_name, act=tf.nn.sigmoid):
     with tf.name_scope(layer_name):
         with tf.name_scope('weights'):
             weights = weight_variable([x_dim, output_dim])
@@ -65,71 +64,66 @@ def fully_connected_layer(x, x_dim, output_dim, layer_name, act=tf.nn.relu):
 
 def cnn(x):
     with tf.name_scope('reshape'):
-        x_image = tf.reshape(x, [-1, 640, 640, 1])
+        x_image = tf.reshape(x, [-1, 640, 640, 2])
     
-    h_conv1 = conv_layer(x_image, 10, 10, 1, 4, 'conv1')
+    h_conv1 = conv_layer(x_image, 10, 10, 2, 32, 'conv1')
     h_pool1 = max_pool_2x2(h_conv1, 'pool1')
-    h_conv2 = conv_layer(h_pool1, 5, 5, 4, 16, 'conv2')
+    h_conv2 = conv_layer(h_pool1, 10, 10, 32, 64, 'conv2')
     h_pool2 = max_pool_2x2(h_conv2, 'pool2')
-    h_conv3 = conv_layer(h_pool2, 5, 5, 16, 32, 'conv3')
+    h_conv3 = conv_layer(h_pool2, 10, 10, 64, 128, 'conv3')
     h_pool3 = max_pool_2x2(h_conv3, 'pool3')
     
-    h_pool3_flat = tf.reshape(h_pool3, [-1, 80*80*32])
-    h_fc1 = fully_connected_layer(h_pool3_flat, 80*80*32, 1024, 'fc1')
+    h_pool3_flat = tf.reshape(h_pool3, [-1, 80*80*128])
+    h_fc1 = fully_connected_layer(h_pool3_flat, 80*80*128, 1024, 'fc1')
     h_fc2 = fully_connected_layer(h_fc1, 1024, 2048, 'fc2')
-
+    h_fc3 = fully_connected_layer(h_fc2, 2048, 4096, 'fc3')
     with tf.name_scope('dropout'):
         keep_prob = tf.placeholder(tf.float32)
-        h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
+        h_fc3_drop = tf.nn.dropout(h_fc3, keep_prob)
     
-    y_conv = fully_connected_layer(h_fc2_drop, 2048, 640, 'final')
+    y_conv = fully_connected_layer(h_fc3_drop, 4096, 6, 'final')
 
     return y_conv, keep_prob
 
-pMap = np.array(pm.pairmaps)
-loops = np.array(pm.loops)
+pMap = np.loadtxt('pairmap2D.csv',delimiter=',')
+loops = np.loadtxt('loops.csv', delimiter=',')
 
-features = pMap[:90]
-labels = loops[:90]
-test_features = pMap[90:]
-test_label = loops[90:]
-'''
-data = tf.data.Dataset.from_tensor_slices((training_features, training_label))
-iterator = data.make_one_shot_iterator()
-features, labels = iterator.get_next()
+length = len(loops)
+traintest_boundary = int(0.7*length)
 
-test_data = tf.data.Dataset.from_tensor_slices((test_features, test_label))
-test_iterator = test_data.make_one_shot_iterator()
-test_features, test_labels = test_iterator.get_next()
-'''
-x = tf.placeholder(tf.float32, shape=[None, 640*640])
-y_ = tf.placeholder(tf.float32, shape=[None, 640])
+features = pMap[:traintest_boundary]
+labels = loops[:traintest_boundary]
+test_features = pMap[traintest_boundary:]
+test_label = loops[traintest_boundary:]
+
+x = tf.placeholder(tf.float32, shape=[None, 2*640*640])
+y_ = tf.placeholder(tf.float32, shape=[None, 6])
 
 y_conv, keep_prob = cnn(x)
 
 with tf.name_scope('loss'):
-    l2 = tf.nn.l2_loss(y_ - y_conv)
-l2 = tf.reduce_mean(l2)
-tf.summary.scalar('l2', l2)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv)
+cross_entropy = tf.reduce_mean(cross_entropy)
+tf.summary.scalar('cross_entropy', cross_entropy)
 
 with tf.name_scope('adam_optimizer'):
-    train_step = tf.train.AdamOptimizer(1e-2).minimize(l2)
+    train_step = tf.train.AdamOptimizer(1e-8).minimize(cross_entropy)
 
 with tf.name_scope('accuracy'):
-    correct_prediction = tf.equal(tf.round(y_conv), y_)
+    correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
     correct_prediction = tf.cast(correct_prediction, tf.float32)
 accuracy = tf.reduce_mean(correct_prediction)
 tf.summary.scalar('accuracy', accuracy)
 
 with tf.Session() as sess:
     merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter('train', sess.graph)
-    test_writer = tf.summary.FileWriter('test')
+    train_writer = tf.summary.FileWriter('indiv_train', sess.graph)
+    test_writer = tf.summary.FileWriter('indiv_test')
     
     sess.run(tf.global_variables_initializer())
-    for i in range(11):
+    for i in range(1):
         start = time.clock()
-        if i%5 == 0:
+        if i%100 == 0:
             train_accuracy = accuracy.eval(feed_dict={
                 x:features, y_:labels, keep_prob:1.0})
             print('step %d, training accuracy %g' % (i, train_accuracy))
