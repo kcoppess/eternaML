@@ -88,9 +88,8 @@ c = 0
 i = 0
 while i < N and c < 429762:
     pid = playouts.loc[i]['pid'] #iloc[i,0]
-    pid_i = pd.Index([pid])
     for l in range(20674):
-        try targets.loc[pid_i]:
+        try targets.loc[pid]:
             target_struc = targets.iloc[l,1]
             onedim_target, twodim_target = pairmaps(target_struc)
             print onedim_target
